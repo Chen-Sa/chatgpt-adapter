@@ -24,15 +24,7 @@ import (
 )
 
 func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte) (response *http.Response, err error) {
-	count, err := checkUsage(ctx, env, 150)
-	if err != nil {
-		return
-	}
-	if count <= 0 {
-		err = fmt.Errorf("invalid usage")
-		return
-	}
-
+	// Removed the usage check here
 	response, err = emit.ClientBuilder(common.HTTPClient).
 		Context(ctx.Request.Context()).
 		Proxies(env.GetString("server.proxied")).
@@ -92,64 +84,7 @@ func convertRequest(completion model.Completion) (buffer []byte, err error) {
 	return
 }
 
-func checkUsage(ctx *gin.Context, env *env.Environment, max int) (count int, err error) {
-	var (
-		cookie = ctx.GetString("token")
-	)
-	cookie, err = url.QueryUnescape(cookie)
-	if err != nil {
-		return
-	}
-
-	user := ""
-	if strings.Contains(cookie, "::") {
-		user = strings.Split(cookie, "::")[0]
-	}
-	response, err := emit.ClientBuilder(common.HTTPClient).
-		Context(ctx.Request.Context()).
-		Proxies(env.GetString("server.proxied")).
-		GET("https://www.cursor.com/api/usage").
-		Query("user", user).
-		Header("cookie", "WorkosCursorSessionToken="+cookie).
-		Header("referer", "https://www.cursor.com/settings").
-		Header("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15").
-		DoC(emit.Status(http.StatusOK), emit.IsJSON)
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-	obj, err := emit.ToMap(response)
-	if err != nil {
-		return
-	}
-
-	if som, ok := obj["startOfMonth"]; ok {
-		t, e := time.Parse("2006-01-02T15:04:05.000Z", som.(string))
-		if e != nil {
-			logger.Error(e)
-		} else {
-			if t.Before(time.Now().Add(-(14 * 24 * time.Hour))) { // 超14天
-				return
-			}
-		}
-	}
-
-	for k, v := range obj {
-		if !strings.Contains(k, "gpt-") {
-			continue
-		}
-		value, ok := v.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		i := value["numRequests"].(float64)
-		count += int(i)
-	}
-
-	count = max - count
-	return
-}
+// Removed the entire checkUsage function
 
 func genClientKey(token string) string {
 	hex1 := sha256.Sum256([]byte(token + "--client-key"))
