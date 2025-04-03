@@ -92,15 +92,6 @@ func convertRequest(completion model.Completion) (buffer []byte, err error) {
 }
 
 func checkUsage(ctx *gin.Context, env *env.Environment, max int) (count int, err error) {
-	var (
-		cookie = ctx.GetString("token")
-	)
-	cookie, err = url.QueryUnescape(cookie)
-	if err != nil {
-		return
-	}
-
-	// 去掉对 https://www.cursor.com/api/usage 的请求，直接返回最大值
 	count = max
 	return
 }
