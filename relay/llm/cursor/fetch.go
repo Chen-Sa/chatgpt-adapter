@@ -24,7 +24,15 @@ import (
 )
 
 func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte) (response *http.Response, err error) {
-	// Removed the usage check here
+	count, err := checkUsage(ctx, env, 150)
+	if err != nil {
+		return
+	}
+	if count <= 0 {
+		err = fmt.Errorf("invalid usage")
+		return
+	}
+
 	response, err = emit.ClientBuilder(common.HTTPClient).
 		Context(ctx.Request.Context()).
 		Proxies(env.GetString("server.proxied")).
@@ -84,7 +92,20 @@ func convertRequest(completion model.Completion) (buffer []byte, err error) {
 	return
 }
 
-// Removed the entire checkUsage function
+func checkUsage(ctx *gin.Context, env *env.Environment, max int) (count int, err error) {
+	var (
+		cookie = ctx.GetString("token")
+	)
+	cookie, err = url.QueryUnescape(cookie)
+	if err != nil {
+		return
+	}
+
+	// 去掉对 https://www.cursor.com/api/usage 的请求，直接返回最大值
+	count = max
+	return
+}
+
 
 func genClientKey(token string) string {
 	hex1 := sha256.Sum256([]byte(token + "--client-key"))
