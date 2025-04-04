@@ -34,24 +34,7 @@ func init() {
 			connTimeout = 180
 		}
 
-		// 完全禁用SSL验证的配置
-		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS12, // 保持最低TLS版本
-			MaxVersion:         tls.VersionTLS13,
-		}
-
-		options = append(options,
-			emit.Ja3Helper(
-				emit.Echo{
-					RandomTLSExtension: true,
-					HelloID:           profiles.Chrome_133,
-				},
-				connTimeout,
-			),
-			emit.TLSConfigHelper(tlsConfig),
-		)
-
+		options = append(options, emit.Ja3Helper(emit.Echo{RandomTLSExtension: true, HelloID: profiles.Chrome_133}, connTimeout))
 		HTTPClient, err = emit.NewSession(proxied, false, ips("127.0.0.1"), options...)
 		if err != nil {
 			logger.Fatal("Error initializing HTTPClient: ", err)
@@ -59,7 +42,7 @@ func init() {
 
 		NopHTTPClient, err = emit.NewSession("", false, nil, options...)
 		if err != nil {
-			logger.Fatal("Error initializing NopHTTPClient: ", err)
+			logger.Fatal("Error initializing HTTPClient: ", err)
 		}
 	})
 
@@ -70,6 +53,7 @@ func init() {
 
 		port := env.GetString("browser-less.port")
 		if port == "" {
+			// logger.Fatal("please config browser-less.port to use")
 			return
 		}
 
@@ -79,39 +63,43 @@ func init() {
 	})
 }
 
-func GetIdleConnectOptions(env *env.Environment) []emit.OptionHelper {
-	options := make([]emit.OptionHelper, 0)
+func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 	opts := env.GetStringMap("server-conn")
-
 	if value, ok := opts["idleconntimeout"]; ok {
-		if timeout, o := value.(int); o && timeout > 0 {
-			options = append(options, emit.IdleConnTimeoutHelper(time.Duration(timeout)*time.Second))
+		timeout, o := value.(int)
+		if o {
+			if timeout > 0 {
+				options = append(options, emit.IdleConnTimeoutHelper(time.Duration(timeout)*time.Second))
+			}
 		} else {
 			logger.Warnf("read idleConnTimeout error: %v", value)
 		}
 	}
 
 	if value, ok := opts["responseheadertimeout"]; ok {
-		if timeout, o := value.(int); o && timeout > 0 {
-			options = append(options, emit.ResponseHeaderTimeoutHelper(time.Duration(timeout)*time.Second))
+		timeout, o := value.(int)
+		if o {
+			if timeout > 0 {
+				options = append(options, emit.ResponseHeaderTimeoutHelper(time.Duration(timeout)*time.Second))
+			}
 		} else {
 			logger.Warnf("read responseHeaderTimeout error: %v", value)
 		}
 	}
 
 	if value, ok := opts["expectcontinuetimeout"]; ok {
-		if timeout, o := value.(int); o && timeout > 0 {
-			options = append(options, emit.ExpectContinueTimeoutHelper(time.Duration(timeout)*time.Second))
+		timeout, o := value.(int)
+		if o {
+			if timeout > 0 {
+				options = append(options, emit.ExpectContinueTimeoutHelper(time.Duration(timeout)*time.Second))
+			}
 		} else {
 			logger.Warnf("read expectContinueTimeout error: %v", value)
 		}
 	}
 
-	// 添加默认的禁用SSL验证配置
-	options = append(options, emit.TLSConfigHelper(&tls.Config{
-		InsecureSkipVerify: true,
-	}))
-	return options
+	options = append(options, emit.TLSConfigHelper(&tls.Config{InsecureSkipVerify: true}))
+	return
 }
 
 func NewPPLSession(env *env.Environment) (ok bool, session *emit.Session) {
@@ -244,6 +232,7 @@ func DownloadFile(session *emit.Session, proxies, url, suffix string, header map
 
 func DownloadBuffer(session *emit.Session, proxies, url string, header map[string]string) (buffer []byte, err error) {
 	builder := emit.ClientBuilder(session).
+		// Ja3(ja3).
 		Proxies(proxies).
 		GET(url).
 		Header("Sec-Ch-Ua-Mobile", "?0").
@@ -260,6 +249,7 @@ func DownloadBuffer(session *emit.Session, proxies, url string, header map[strin
 		for _, r := range responses {
 			_ = r.Body.Close()
 		}
+		// session.IdleClose()
 	}()
 
 	retry := 3
