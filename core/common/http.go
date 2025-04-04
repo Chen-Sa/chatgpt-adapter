@@ -42,7 +42,7 @@ func init() {
 
 		NopHTTPClient, err = emit.NewSession("", false, nil, options...)
 		if err != nil {
-			logger.Fatal("Error initializing HTTPClient: ", err)
+			logger.Fatal("Error initializing NopHTTPClient: ", err)
 		}
 	})
 
@@ -65,8 +65,7 @@ func init() {
 func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 	opts := env.GetStringMap("server-conn")
 	if value, ok := opts["idleconntimeout"]; ok {
-		timeout, o := value.(int)
-		if o {
+		if timeout, o := value.(int); o {
 			if timeout > 0 {
 				options = append(options, emit.IdleConnTimeoutHelper(time.Duration(timeout)*time.Second))
 			}
@@ -76,8 +75,7 @@ func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 	}
 
 	if value, ok := opts["responseheadertimeout"]; ok {
-		timeout, o := value.(int)
-		if o {
+		if timeout, o := value.(int); o {
 			if timeout > 0 {
 				options = append(options, emit.ResponseHeaderTimeoutHelper(time.Duration(timeout)*time.Second))
 			}
@@ -87,8 +85,7 @@ func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 	}
 
 	if value, ok := opts["expectcontinuetimeout"]; ok {
-		timeout, o := value.(int)
-		if o {
+		if timeout, o := value.(int); o {
 			if timeout > 0 {
 				options = append(options, emit.ExpectContinueTimeoutHelper(time.Duration(timeout)*time.Second))
 			}
@@ -113,11 +110,13 @@ func (t *SNITransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		transport = http.DefaultTransport
 	}
 
-	if t, ok := transport.(*http.Transport); ok {
-		t.TLSClientConfig = &tls.Config{
+	if tr, ok := transport.(*http.Transport); ok {
+		tr = tr.Clone()
+		tr.TLSClientConfig = &tls.Config{
 			ServerName:         t.ServerName,
 			InsecureSkipVerify: !t.VerifySSL,
 		}
+		return tr.RoundTrip(req)
 	}
 
 	return transport.RoundTrip(req)
@@ -207,8 +206,7 @@ func SaveBase64(base64Encoding, suffix string) (file string, err error) {
 	}
 
 	timePath := time.Now().Format("2006/01/02")
-	_, err = os.Stat("tmp/" + timePath)
-	if os.IsNotExist(err) {
+	if _, err = os.Stat("tmp/" + timePath); os.IsNotExist(err) {
 		err = os.MkdirAll("tmp/"+timePath, 0766)
 		if err != nil {
 			logger.Error("save base64 failed: ", err)
@@ -239,8 +237,7 @@ func DownloadFile(session *emit.Session, proxies, url, suffix string, header map
 	}
 
 	timePath := time.Now().Format("2006/01/02")
-	_, err = os.Stat("tmp/" + timePath)
-	if os.IsNotExist(err) {
+	if _, err = os.Stat("tmp/" + timePath); os.IsNotExist(err) {
 		err = os.MkdirAll("tmp/"+timePath, 0766)
 		if err != nil {
 			return "", err
