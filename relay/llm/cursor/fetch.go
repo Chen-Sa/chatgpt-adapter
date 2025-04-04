@@ -6,6 +6,7 @@ import (
 	"chatgpt-adapter/core/gin/model"
 	"chatgpt-adapter/core/logger"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -22,6 +23,19 @@ import (
 	"time"
 )
 
+func init() {
+	// 初始化全局 HTTP 客户端
+	common.HTTPClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,  // 禁用证书验证
+				MinVersion:        tls.VersionTLS12,  // 强制 TLS 1.2
+				ServerName:        "api2.cursor.sh",  // 设置 SNI
+			},
+		},
+	}
+}
+
 func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte) (response *http.Response, err error) {
 	count, err := checkUsage(ctx, env, 150)
 	if err != nil {
@@ -35,11 +49,6 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 	response, err = emit.ClientBuilder(common.HTTPClient).
 		Context(ctx.Request.Context()).
 		Proxies(env.GetString("server.proxied")).
-		TLSConfig(&tls.Config{
-			InsecureSkipVerify: true,
-			MinVersion: tls.VersionTLS12,
-		        ServerName: "api2.cursor.sh",  // 设置 SNI，相当于 server_hostname
-		}).
 		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
