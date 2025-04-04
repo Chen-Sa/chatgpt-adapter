@@ -34,19 +34,21 @@ func init() {
 			connTimeout = 180
 		}
 
-		// 增强 TLS 配置
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify: true, // 跳过证书验证
+			InsecureSkipVerify: true,
 			MinVersion:         tls.VersionTLS12,
 			MaxVersion:         tls.VersionTLS13,
 		}
 
 		options = append(options,
-			emit.Ja3Helper(emit.Echo{
-				RandomTLSExtension: true,
-				HelloID:           profiles.Chrome_133,
-			}, connTimeout),
-			emit.TLSConfigHelper(tlsConfig), // 添加自定义 TLS 配置
+			emit.Ja3Helper(
+				emit.Echo{
+					RandomTLSExtension: true,
+					HelloID:           profiles.Chrome_133,
+				},
+				connTimeout,
+			),
+			emit.TLSConfigHelper(tlsConfig),
 		)
 
 		HTTPClient, err = emit.NewSession(proxied, false, ips("127.0.0.1"), options...)
@@ -54,7 +56,6 @@ func init() {
 			logger.Fatal("Error initializing HTTPClient: ", err)
 		}
 
-		// 为无代理客户端也配置相同的 TLS 设置
 		NopHTTPClient, err = emit.NewSession("", false, nil, options...)
 		if err != nil {
 			logger.Fatal("Error initializing NopHTTPClient: ", err)
@@ -77,11 +78,13 @@ func init() {
 	})
 }
 
-func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
+func GetIdleConnectOptions(env *env.Environment) []emit.OptionHelper {
+	options := make([]emit.OptionHelper, 0)
 	opts := env.GetStringMap("server-conn")
+
 	if value, ok := opts["idleconntimeout"]; ok {
 		if timeout, o := value.(int); o && timeout > 0 {
-			options = append(options, emit.IdleConnTimeoutHelper(time.Duration(timeout)*time.Second)
+			options = append(options, emit.IdleConnTimeoutHelper(time.Duration(timeout)*time.Second))
 		} else {
 			logger.Warnf("read idleConnTimeout error: %v", value)
 		}
@@ -103,11 +106,10 @@ func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 		}
 	}
 
-	// 默认 TLS 配置（会被后面的自定义配置覆盖）
 	options = append(options, emit.TLSConfigHelper(&tls.Config{
 		InsecureSkipVerify: true,
 	}))
-	return
+	return options
 }
 
 func NewPPLSession(env *env.Environment) (ok bool, session *emit.Session) {
