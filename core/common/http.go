@@ -53,7 +53,6 @@ func init() {
 
 		port := env.GetString("browser-less.port")
 		if port == "" {
-			// logger.Fatal("please config browser-less.port to use")
 			return
 		}
 
@@ -100,6 +99,38 @@ func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 
 	options = append(options, emit.TLSConfigHelper(&tls.Config{InsecureSkipVerify: true}))
 	return
+}
+
+type SNITransport struct {
+	http.RoundTripper
+	ServerName string
+	VerifySSL  bool
+}
+
+func (t *SNITransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	transport := t.RoundTripper
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+
+	if t, ok := transport.(*http.Transport); ok {
+		t.TLSClientConfig = &tls.Config{
+			ServerName:         t.ServerName,
+			InsecureSkipVerify: !t.VerifySSL,
+		}
+	}
+
+	return transport.RoundTrip(req)
+}
+
+func NewSNIClient(serverName string, verifySSL bool) *http.Client {
+	return &http.Client{
+		Transport: &SNITransport{
+			ServerName: serverName,
+			VerifySSL:  verifySSL,
+		},
+		Timeout: 30 * time.Second,
+	}
 }
 
 func NewPPLSession(env *env.Environment) (ok bool, session *emit.Session) {
@@ -232,7 +263,6 @@ func DownloadFile(session *emit.Session, proxies, url, suffix string, header map
 
 func DownloadBuffer(session *emit.Session, proxies, url string, header map[string]string) (buffer []byte, err error) {
 	builder := emit.ClientBuilder(session).
-		// Ja3(ja3).
 		Proxies(proxies).
 		GET(url).
 		Header("Sec-Ch-Ua-Mobile", "?0").
@@ -249,7 +279,6 @@ func DownloadBuffer(session *emit.Session, proxies, url string, header map[strin
 		for _, r := range responses {
 			_ = r.Body.Close()
 		}
-		// session.IdleClose()
 	}()
 
 	retry := 3
