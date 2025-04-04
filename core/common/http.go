@@ -41,9 +41,9 @@ func init() {
 			MaxVersion:         tls.VersionTLS13,
 		}
 
-		options = append(options, 
+		options = append(options,
 			emit.Ja3Helper(emit.Echo{
-				RandomTLSExtension: true, 
+				RandomTLSExtension: true,
 				HelloID:           profiles.Chrome_133,
 			}, connTimeout),
 			emit.TLSConfigHelper(tlsConfig), // 添加自定义 TLS 配置
@@ -109,8 +109,6 @@ func GetIdleConnectOptions(env *env.Environment) (options []emit.OptionHelper) {
 	}))
 	return
 }
-
-// 其他函数保持不变...
 
 func NewPPLSession(env *env.Environment) (ok bool, session *emit.Session) {
 	u := env.GetString("ppl")
@@ -242,7 +240,6 @@ func DownloadFile(session *emit.Session, proxies, url, suffix string, header map
 
 func DownloadBuffer(session *emit.Session, proxies, url string, header map[string]string) (buffer []byte, err error) {
 	builder := emit.ClientBuilder(session).
-		// Ja3(ja3).
 		Proxies(proxies).
 		GET(url).
 		Header("Sec-Ch-Ua-Mobile", "?0").
@@ -259,7 +256,6 @@ func DownloadBuffer(session *emit.Session, proxies, url string, header map[strin
 		for _, r := range responses {
 			_ = r.Body.Close()
 		}
-		// session.IdleClose()
 	}()
 
 	retry := 3
