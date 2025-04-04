@@ -23,19 +23,6 @@ import (
 	"time"
 )
 
-func init() {
-	// 初始化全局 HTTP 客户端
-	common.HTTPClient = &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,  // 禁用证书验证
-				MinVersion:        tls.VersionTLS12,  // 强制 TLS 1.2
-				ServerName:        "api2.cursor.sh",  // 设置 SNI
-			},
-		},
-	}
-}
-
 func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte) (response *http.Response, err error) {
 	count, err := checkUsage(ctx, env, 150)
 	if err != nil {
@@ -46,10 +33,23 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		return
 	}
 
-	response, err = emit.ClientBuilder(common.HTTPClient).
-		Context(ctx.Request.Context()).
-		Proxies(env.GetString("server.proxied")).
-		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
+	// 创建自定义 Transport
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:        tls.VersionTLS12,
+			ServerName:        "api2.cursor.sh",
+		},
+	}
+
+	// 创建 emit.Session
+	session := emit.NewSession().
+		SetTransport(transport).
+		SetProxy(env.GetString("server.proxied")).
+		SetContext(ctx.Request.Context())
+
+	response, err = emit.ClientBuilder(session).
+		POST("https://api2.cursor.sh/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
 		Header("connect-accept-encoding", "gzip").
