@@ -38,6 +38,7 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		TLSConfig(&tls.Config{
 			InsecureSkipVerify: true,
 			MinVersion: tls.VersionTLS12,
+		        ServerName: "api2.cursor.sh",  // 设置 SNI，相当于 server_hostname
 		}).
 		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
