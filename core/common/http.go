@@ -34,9 +34,10 @@ func init() {
 			connTimeout = 180
 		}
 
+		// 完全禁用SSL验证的配置
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: true,
-			MinVersion:         tls.VersionTLS12,
+			MinVersion:         tls.VersionTLS12, // 保持最低TLS版本
 			MaxVersion:         tls.VersionTLS13,
 		}
 
@@ -106,6 +107,7 @@ func GetIdleConnectOptions(env *env.Environment) []emit.OptionHelper {
 		}
 	}
 
+	// 添加默认的禁用SSL验证配置
 	options = append(options, emit.TLSConfigHelper(&tls.Config{
 		InsecureSkipVerify: true,
 	}))
