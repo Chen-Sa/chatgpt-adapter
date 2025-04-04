@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	"crypto/tls"
 )
 
 func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte) (response *http.Response, err error) {
@@ -33,22 +32,10 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		return
 	}
 
-	// Custom HTTP client to handle TLS settings
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: false, // This is safer than skipping verification entirely
-		},
-	}
-
-	client := &http.Client{
-		Transport: transport,
-	}
-
-	// Make the POST request using the custom client
-	response, err = emit.ClientBuilder(client).
+	response, err = emit.ClientBuilder(common.HTTPClient).
 		Context(ctx.Request.Context()).
 		Proxies(env.GetString("server.proxied")).
-		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
+		POST("https://api2.cursor.sh/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
 		Header("connect-accept-encoding", "gzip").
@@ -64,13 +51,14 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		Header("x-ghost-mode", "false").
 		Header("x-request-id", uuid.NewString()).
 		Header("x-session-id", uuid.NewString()).
-		Header("host", "api2.cursor.sh"). // Ensure the host is set to the correct domain
+		Header("host", "api2.cursor.sh").
 		Header("Connection", "close").
 		Header("Transfer-Encoding", "chunked").
 		Bytes(buffer).
 		DoC(emit.Status(http.StatusOK), emit.IsPROTO)
 	return
 }
+
 func convertRequest(completion model.Completion) (buffer []byte, err error) {
 	messages := stream.Map(stream.OfSlice(completion.Messages), func(message model.Keyv[interface{}]) *ChatMessage_UserMessage {
 		return &ChatMessage_UserMessage{
