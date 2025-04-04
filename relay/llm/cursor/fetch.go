@@ -6,7 +6,6 @@ import (
 	"chatgpt-adapter/core/gin/model"
 	"chatgpt-adapter/core/logger"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -21,6 +20,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"crypto/tls"
 )
 
 func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte) (response *http.Response, err error) {
@@ -33,28 +33,21 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		return
 	}
 
-	// 创建自定义 Transport
+	// Custom HTTP client to handle TLS settings
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			MinVersion:        tls.VersionTLS12,
-			ServerName:        "api2.cursor.sh",
+			InsecureSkipVerify: false, // This is safer than skipping verification entirely
 		},
 	}
 
-	// 正确创建 emit.Session
-	session, err := emit.NewSession(
-		"",                    // baseURL
-		false,                 // skipTLSVerify
-		nil,                   // proxyFunc
-		emit.WithTransport(transport),
-		emit.WithContext(ctx.Request.Context()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create session: %v", err)
+	client := &http.Client{
+		Transport: transport,
 	}
 
-	response, err = emit.ClientBuilder(session).
+	// Make the POST request using the custom client
+	response, err = emit.ClientBuilder(client).
+		Context(ctx.Request.Context()).
+		Proxies(env.GetString("server.proxied")).
 		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
@@ -71,14 +64,13 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		Header("x-ghost-mode", "false").
 		Header("x-request-id", uuid.NewString()).
 		Header("x-session-id", uuid.NewString()).
-		Header("host", "api2.cursor.sh").
+		Header("host", "api2.cursor.sh"). // Ensure the host is set to the correct domain
 		Header("Connection", "close").
 		Header("Transfer-Encoding", "chunked").
 		Bytes(buffer).
 		DoC(emit.Status(http.StatusOK), emit.IsPROTO)
 	return
 }
-
 func convertRequest(completion model.Completion) (buffer []byte, err error) {
 	messages := stream.Map(stream.OfSlice(completion.Messages), func(message model.Keyv[interface{}]) *ChatMessage_UserMessage {
 		return &ChatMessage_UserMessage{
