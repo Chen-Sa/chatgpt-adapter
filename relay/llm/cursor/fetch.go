@@ -35,6 +35,10 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 	response, err = emit.ClientBuilder(common.HTTPClient).
 		Context(ctx.Request.Context()).
 		Proxies(env.GetString("server.proxied")).
+		TLSConfig(&tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion: tls.VersionTLS12,
+		}).
 		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
