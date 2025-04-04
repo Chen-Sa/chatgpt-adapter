@@ -53,6 +53,7 @@ func init() {
 
 		port := env.GetString("browser-less.port")
 		if port == "" {
+			// logger.Fatal("please config browser-less.port to use")
 			return
 		}
 
@@ -138,7 +139,7 @@ func NewPPLSession(env *env.Environment) (ok bool, session *emit.Session) {
 		ok = true
 	} else {
 		proxied = emit.TextResponse(response)
-		c := regexp.MustCompile(`(http|https|socks5)://\d+\.\d+\.\d+\.\d+:\d+`)
+		c := regexp.MustCompile((http|https|socks5)://\d+\.\d+\.\d+\.\d+:\d+)
 		ok = c.MatchString(proxied)
 		if !ok {
 			return
@@ -231,6 +232,7 @@ func DownloadFile(session *emit.Session, proxies, url, suffix string, header map
 
 func DownloadBuffer(session *emit.Session, proxies, url string, header map[string]string) (buffer []byte, err error) {
 	builder := emit.ClientBuilder(session).
+		// Ja3(ja3).
 		Proxies(proxies).
 		GET(url).
 		Header("Sec-Ch-Ua-Mobile", "?0").
@@ -247,6 +249,7 @@ func DownloadBuffer(session *emit.Session, proxies, url string, header map[strin
 		for _, r := range responses {
 			_ = r.Body.Close()
 		}
+		// session.IdleClose()
 	}()
 
 	retry := 3
@@ -275,4 +278,15 @@ label:
 	return
 }
 
-func
+func ist(response *http.Response, ts ...string) (ok bool) {
+	if response == nil {
+		return
+	}
+	h := response.Header
+	for _, t := range ts {
+		if strings.Contains(h.Get("Content-Type"), t) {
+			return true
+		}
+	}
+	return
+}
