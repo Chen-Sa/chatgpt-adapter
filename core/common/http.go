@@ -139,7 +139,7 @@ func NewPPLSession(env *env.Environment) (ok bool, session *emit.Session) {
 		ok = true
 	} else {
 		proxied = emit.TextResponse(response)
-		c := regexp.MustCompile((http|https|socks5)://\d+\.\d+\.\d+\.\d+:\d+)
+		c := regexp.MustCompile(`(http|https|socks5)://\d+\.\d+\.\d+\.\d+:\d+`)
 		ok = c.MatchString(proxied)
 		if !ok {
 			return
