@@ -42,14 +42,20 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		},
 	}
 
-	// 创建 emit.Session
-	session := emit.NewSession().
-		SetTransport(transport).
-		SetProxy(env.GetString("server.proxied")).
-		SetContext(ctx.Request.Context())
+	// 正确创建 emit.Session
+	session, err := emit.NewSession(
+		"",                    // baseURL
+		false,                 // skipTLSVerify
+		nil,                   // proxyFunc
+		emit.WithTransport(transport),
+		emit.WithContext(ctx.Request.Context()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create session: %v", err)
+	}
 
 	response, err = emit.ClientBuilder(session).
-		POST("https://api2.cursor.sh/aiserver.v1.AiService/StreamChat").
+		POST("https://[2606:4700::6812:127d]/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
 		Header("connect-accept-encoding", "gzip").
