@@ -46,7 +46,7 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 		Header("x-amzn-trace-id", "Root="+uuid.NewString()).
 		Header("x-client-key", genClientKey(ctx.GetString("token"))).
 		Header("x-cursor-checksum", genChecksum(ctx, env)).
-		Header("x-cursor-client-version", "0.45.11").
+		Header("x-cursor-client-version", "0.48.6").
 		Header("x-cursor-timezone", "Asia/Shanghai").
 		Header("x-ghost-mode", "false").
 		Header("x-request-id", uuid.NewString()).
