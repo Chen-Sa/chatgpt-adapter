@@ -35,7 +35,7 @@ func fetch(ctx *gin.Context, env *env.Environment, cookie string, buffer []byte)
 	response, err = emit.ClientBuilder(common.HTTPClient).
 		Context(ctx.Request.Context()).
 		Proxies(env.GetString("server.proxied")).
-		POST("http://95.217.72.181:1003").
+		POST("https://api2.cursor.sh/aiserver.v1.AiService/StreamChat").
 		Header("authorization", "Bearer "+cookie).
 		Header("content-type", "application/connect+proto").
 		Header("connect-accept-encoding", "gzip").
